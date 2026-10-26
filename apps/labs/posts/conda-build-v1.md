@@ -1,7 +1,7 @@
 ---
 title: 'Bringing v1 recipes to conda-build'
 published: October 28, 2026
-authors: [jakov-smolic, jaimergp]
+authors: [jakov-smolic, jaime-rodriguez-guerra]
 description: "conda-build can now build v1 recipes, bringing a standardized, schema-validated recipe format to a familiar UX."
 category: [Packaging]
 featuredImage:
@@ -37,14 +37,7 @@ This decision is backed by the desire to preserve the existing `conda-build` UX.
 
 When `conda-build` is invoked, it determines the recipe format being used and dispatches the build to the appropriate backend.
 
-```mermaid
-flowchart LR
-    A["conda build path/to/recipe"] --> B{"Recipe format?"}
-    B -- "meta.yaml (v0)" --> C["conda-build backend"]
-    B -- "recipe.yaml (v1)" --> D["py-rattler-build"]
-    C --> E[".conda build output"]
-    D --> E
-```
+![](/posts/conda-build-v1/conda-build-recipe-dispatch.svg)
 
 While `py-rattler-build` provides Python APIs for parsing, rendering, building, and testing, a fully integrated UX also involves recognizing and routing the different settings options. `conda-build` monitors and translates CLI flags, environment variables, and relevant keys in configuration files to their `rattler-build` counterparts when available, erroring out otherwise.
 
@@ -67,45 +60,13 @@ Support also extends beyond package builds, as v1 recipes now work with the `con
 3. **Build each variant.** `run_build()` on a rendered variant builds it and returns a `BuildResult` with the package name, version, build time and the packages produced.
 4. **Test the package.** `Package.from_file()` loads a built `.conda` file, and `run_tests()` runs the tests shipped with it. This also works on the `.conda` archives.
 
-```mermaid
-flowchart TD
-    Start([recipe.yaml]) --> Load{"Recipe source"}
-    Load["Stage0Recipe.from_file()"] --> Parsed["Stage0Recipe<br/>parsed recipe"]
-    Parsed --> Render["recipe.render(VariantConfig)"]
-    Render --> Variants["list of RenderedVariant<br/>one per variant combination"]
-    Variants --> Loop[/"for each variant"/]
-    Loop --> RunBuild["variant.run_build()"]
-    RunBuild --> Result["BuildResult<br/>name, version, build_time, packages"]
-    Result --> TestQ{"Test the package?"}
-    TestQ -->|"No"| Done([Done])
-    TestQ -->|"Yes"| LoadPkg["Package.from_file(.conda file)"]
-    Existing[("Existing .conda package")] --> LoadPkg
-    LoadPkg --> RunTests["pkg.run_tests()"]
-    RunTests --> TestResults["Test results"]
-    TestResults --> Done
-```
+<img src="/posts/conda-build-v1/py-rattler-build-workflow.svg" alt="py-rattler-build workflow" style="display: block; width: 50%; height: auto; margin-left: auto; margin-right: auto;" />
 
 ## Configuration details
 
 `conda-build` builds its configuration from conda's context (`.condarc` files, environment variables and command-line arguments) and its own `Config` object. For v1 recipes, the compatibility layer in `conda_build/_rattler_build/compat.py` reads that same configuration and hands the relevant parts to `py-rattler-build`. The `rattler-build` side doesn't take a unique configuration object. Different settings go to different places:
 
-```mermaid
-flowchart LR
-    subgraph cb["conda-build"]
-        V["Variant files<br/>conda_build_config.yaml, variants.yaml, -m files"]
-        C["conda context and CLI<br/>channels, channel priority, build options"]
-        P["Platforms<br/>CONDA_SUBDIR, target_platform"]
-    end
-    V -->|"from_conda_build_config() or from_file()<br/>then merge()"| VC["VariantConfig"]
-    P --> RC["RenderConfig<br/>PlatformConfig, extra_context"]
-    C --> TC["ToolConfiguration<br/>channel_priority"]
-    C --> BA["run_build() arguments<br/>channels, output_dir, package_format, ..."]
-    VC --> R["recipe.render()"]
-    RC --> R
-    R --> B["variant.run_build()"]
-    TC --> B
-    BA --> B
-```
+![](/posts/conda-build-v1/conda-build-config-routing.svg)
 
 The `VariantConfig` is built only from variant files. Everything else goes into the render configuration, the tool configuration, or the build call itself.
 
