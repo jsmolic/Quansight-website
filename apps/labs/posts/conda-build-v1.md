@@ -12,6 +12,8 @@ hero:
   imageAlt: 'Closeup photo of turned on iPad with rack on table'
 ---
 
+> This article was originally published on the [conda.org blog](https://conda.org/blog/2026-11-09-conda-build-v1/).
+
 `conda-build` has been the de facto tool to build conda packages since the inception of the conda ecosystem.
 Its user experience has suffered from design issues in the recipe format and years of accumulated technical debt.
 Recent work on `conda-build` aims to improve that experience: it now supports v1 recipes, powered by the newly available Python bindings for the `rattler-build` crates.
